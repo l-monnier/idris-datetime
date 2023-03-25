@@ -262,7 +262,7 @@ DI4Y = daysBeforeYear 5
 DI4Y' : Integer
 DI4Y' = daysBeforeYear' 5
 
-DI4Y_is_correct : DI4Y' = (4 * 365 + 2)
+DI4Y_is_correct : DI4Y' = (4 * 365 + 1)
 DI4Y_is_correct = Refl
 
 DI100Y_is_correct : DI100Y'  = 25 * DI4Y' - 1
