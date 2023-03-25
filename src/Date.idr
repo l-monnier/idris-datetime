@@ -28,6 +28,11 @@ import Decidable.Equality
 
 %default total
 
+||| "Lower than" proof.
+||| TODO: consider moving it to its own module.
+data (<) : (m,n : Integer) -> Type where
+  LT : {0 m,n : Integer} -> (0 prf : (m < n) === True) -> m < n
+
 ||| Safe integer division with statically nonzero divisor
 staticDiv 
   :  Nat 
@@ -136,6 +141,14 @@ daysBeforeYear year =
   let y = pred year
   in y * 365 + (staticDiv y 4) + (staticDiv y 400)
 
+||| Number of days before January 1st of the given year.
+daysBeforeYear'
+  :  (year : Integer)
+  -> {auto 0 isValidYear : 0 < year}
+  -> Integer
+daysBeforeYear' year =
+  (year - 1) * 365 + div year 4 - div year 100 + div year 400
+
 ||| Number of days in year preceding first day of month.
 daysBeforeMonth : Nat -> Month -> Nat
 daysBeforeMonth year Jan   = 0
@@ -188,6 +201,7 @@ DIY_400Y_is_correct : DI400Y = (4 * DI100Y + 1)
 DIY_400Y_is_correct = Refl
 -}
 
+{-
 ||| Recursively find month and day for given year and day of year
 findMonthAndDay 
   :  (year       : Nat) 
@@ -218,7 +232,8 @@ where
          year 
          (assert_smaller residual (residual `minus` dim))
          (nextMonth month)
-  
+-}
+
 {-
 ||| Gregorian ordinal to (y, m, d) typle, Considering 1-Jan-1 as day 1
 ord2ymd 
