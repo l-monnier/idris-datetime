@@ -120,6 +120,15 @@ isLeap year =
   in 
     (nthYear 4) && (not (nthYear 100) || (nthYear 400))
 
+||| True if leap year, else False
+isLeap' : (year : Integer) -> {auto 0 isValidYear : 0 < year} -> Bool
+isLeap' year =
+  let
+    nthYear : Integer -> Bool
+    nthYear n = mod year n == 0
+  in
+    (nthYear 4) && (not (nthYear 100) || (nthYear 400))
+
 ||| Number of days in the given month and year
 daysInMonth : Nat -> Month -> Nat
 daysInMonth year Jan = 31
@@ -134,6 +143,25 @@ daysInMonth year Sep = 30
 daysInMonth year Oct = 31
 daysInMonth year Nov = 30
 daysInMonth year Dec = 31
+
+||| Number of days in the given month and year
+daysInMonth'
+  :  (year : Integer)
+  -> {auto 0 isValidYear : 0 < year}
+  -> Month
+  -> Integer
+daysInMonth' year Jan = 31
+daysInMonth' year Feb = if isLeap' year then 29 else 28
+daysInMonth' year Mar = 31
+daysInMonth' year Apr = 30
+daysInMonth' year May = 31
+daysInMonth' year Jun = 30
+daysInMonth' year Jul = 31
+daysInMonth' year Aug = 31
+daysInMonth' year Sep = 30
+daysInMonth' year Oct = 31
+daysInMonth' year Nov = 30
+daysInMonth' year Dec = 31
 
 ||| Number of days before January 1st of the given year.
 daysBeforeYear : (y : Nat) -> {auto _ : NonZero y} -> Nat
@@ -161,10 +189,26 @@ daysBeforeMonth year month = case prevMonth month of
         in
           dim + dbm
 
+||| Number of days in year preceding first day of month.
+daysBeforeMonth'
+  :  (year : Integer)
+  -> {auto 0 isValidYear : 0 < year}
+  -> Month
+  -> Integer
+daysBeforeMonth' year Jan   = 0
+daysBeforeMonth' year month =
+  daysInMonth' year prev + daysBeforeMonth' year (assert_smaller month prev)
+  where
+    prev : Month
+    prev = prevMonth month
+
 ||| Number of days inthe given year
 daysInYear : (y : Nat) -> Nat
 daysInYear y = if isLeap y then 366 else 365
 
+||| Number of days in the given year
+daysInYear' : (year : Integer) -> {auto 0 isValidYear : 0 < year} -> Integer
+daysInYear' year = if isLeap' year then 366 else 365
 
 ||| A validated YMD triple
 |||
@@ -180,26 +224,52 @@ data Date : Type where
     -> {0    _ : LTE day (daysInMonth year month)}
     -> Date
 
+||| A validated YMD triple
+|||
+||| e.g. 2023-Jan-0, 2023-Feb-29, 2012-Aug-35 are not allowed
+export
+data Date' : Type where
+  Valid'
+    :  (year  : Integer)
+    -> (month : Month)
+    -> (day   : Integer)
+    -> {auto 0 isValidYear      : 0 < year}
+    -> {auto 0 isAboveZeroDay   : 0 < day}
+    -> {auto 0 isNotAboveMaxDay : day < (daysInMonth' year month) + 1}
+    -> Date'
+
 ||| Number of days in 400 years
 DI400Y : Nat
 DI400Y = daysBeforeYear 401
+
+||| Number of days in 400 years
+DI400Y' : Integer
+DI400Y' = daysBeforeYear' 401
 
 ||| Number of days in 100 years
 DI100Y : Nat
 DI100Y = daysBeforeYear 101
 
+||| Number of days in 100 years
+DI100Y' : Integer
+DI100Y' = daysBeforeYear' 101
+
 ||| Number of days in 4 years
 DI4Y : Nat
 DI4Y = daysBeforeYear 5
 
-{- works but is slow
-DI4Y_is_correct : DI4Y = (4 * 365 + 1)
+||| Number of days in 4 years
+DI4Y' : Integer
+DI4Y' = daysBeforeYear' 5
+
+DI4Y_is_correct : DI4Y' = (4 * 365 + 2)
 DI4Y_is_correct = Refl
-DI100Y_is_correct : DI100Y  = 25 * DI4Y - 1
+
+DI100Y_is_correct : DI100Y'  = 25 * DI4Y' - 1
 DI100Y_is_correct = Refl
-DIY_400Y_is_correct : DI400Y = (4 * DI100Y + 1)
+
+DIY_400Y_is_correct : DI400Y' = (4 * DI100Y' + 1)
 DIY_400Y_is_correct = Refl
--}
 
 {-
 ||| Recursively find month and day for given year and day of year
