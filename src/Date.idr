@@ -271,7 +271,68 @@ DI100Y_is_correct = Refl
 DIY_400Y_is_correct : DI400Y' = (4 * DI100Y' + 1)
 DIY_400Y_is_correct = Refl
 
-{-
+||| Convert a Julian Day count set at an arbitrary point in time to
+||| a Gregorian Date typle (year, month, day).
+|||
+||| The first argument is the number of day between the arbitray point
+||| and the (virtual) date 1-Mar-0.
+||| The second argument is the Julian Day count to convert.
+|||
+||| The alorgorithm used is the one of Peter Baum in his article Date Algorithms:
+||| https://www.researchgate.net/publication/316558298_Date_Algorithms
+julianDayToGregorian : Double -> Double -> (Double, Double, Double)
+julianDayToGregorian cst jd =
+  if month > 12
+  then (year + 1, month - 12, day)
+  else (year, month, day)
+  where
+
+    -- Drop the fraction of the provided number.
+    -- For example: -1.5 becomes -1 and 1.5 becomes 1
+    fix : Double -> Double
+    fix x = if x < 0 then ceiling x else floor x
+
+    -- Gregorian ordinal adjusted to a reference point set on 1 March 0
+    z : Double
+    z = floor (jd - cst)
+
+    -- The fractional part of the Gregorian ordinal
+    r : Double
+    r = jd - cst - z
+
+    -- Value used in later steps
+    g : Double
+    g = z - 0.25
+
+    -- Number of full centuries.
+    a : Double
+    a = floor (g / 36524.25)
+
+    -- Number of days within the whole centuries
+    b : Double
+    b = a - floor (a / 4)
+
+    year : Double
+    year = floor ((b + g) / 365.25)
+
+    -- Number of days in the current year
+    c : Double
+    c = b + z - floor (365.25 * year)
+
+    month : Double
+    month = fix ((5 * c + 456) / 153)
+
+    day : Double
+    day = c - fix ((153 * month - 457) / 5) + r
+
+||| Gregorian ordinal to (Gregorian) `Date` considering 1-Jan-1 as day 1
+ord2ym
+  : (ord : Integer)
+  -> {auto 0 isAbove0 : 0 < ord}
+  -> (Double, Double, Double)
+ord2ym ord = julianDayToGregorian (-306) (fromInteger ord)
+
+  {-
 ||| Recursively find month and day for given year and day of year
 findMonthAndDay 
   :  (year       : Nat) 
