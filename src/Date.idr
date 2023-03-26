@@ -326,6 +326,7 @@ julianDayToGregorian cst jd =
     day = c - fix ((153 * month - 457) / 5) + r
 
 ||| Gregorian ordinal to (Gregorian) `Date` considering 1-Jan-1 as day 1
+public export
 ord2ym
   : (ord : Integer)
   -> {auto 0 isAbove0 : 0 < ord}
