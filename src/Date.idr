@@ -328,7 +328,7 @@ julianDayToGregorian cst jd =
 ||| Gregorian ordinal to (Gregorian) `Date` considering 1-Jan-1 as day 1
 public export
 ord2ym
-  : (ord : Integer)
+  :  (ord : Integer)
   -> {auto 0 isAbove0 : 0 < ord}
   -> (Double, Double, Double)
 ord2ym ord = julianDayToGregorian (-306) (fromInteger ord)
