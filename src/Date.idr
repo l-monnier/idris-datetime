@@ -80,6 +80,12 @@ data Month
   | Nov
   | Dec
 
+||| Exceptions
+data DateTimeException =
+    DayLowerThanOne Integer
+  | DateDoesNotExist Integer Month Integer
+  | YearLowerThanOne Integer
+
 ||| Return the previous month for the given month
 prevMonth : Month -> Month
 prevMonth Jan = Dec
@@ -129,6 +135,15 @@ isLeap' year =
   in
     (nthYear 4) && (not (nthYear 100) || (nthYear 400))
 
+||| True if the year is above 0 and is a leap year, else False
+isLeap'' : (year : Integer) -> Bool
+isLeap'' year =
+  let
+    nthYear : Integer -> Bool
+    nthYear n = mod year n == 0
+  in
+    year > 0 && (nthYear 4) && (not (nthYear 100) || (nthYear 400))
+
 ||| Number of days in the given month and year
 daysInMonth : Nat -> Month -> Nat
 daysInMonth year Jan = 31
@@ -144,24 +159,32 @@ daysInMonth year Oct = 31
 daysInMonth year Nov = 30
 daysInMonth year Dec = 31
 
+daysInMonth''
+  :  (year : Integer)
+  -> Month
+  -> Integer
+daysInMonth'' year month with (if year < 1 then 0 else year)
+  daysInMonth'' _ _   | 0 = 0
+  daysInMonth'' _ Jan | _ = 31
+  daysInMonth'' year Feb | _ = if isLeap'' year then 29 else 28
+  daysInMonth'' _ Mar | _ = 31
+  daysInMonth'' _ Apr | _ = 30
+  daysInMonth'' _ May | _ = 31
+  daysInMonth'' _ Jun | _ = 30
+  daysInMonth'' _ Jul | _ = 31
+  daysInMonth'' _ Aug | _ = 31
+  daysInMonth'' _ Sep | _ = 30
+  daysInMonth'' _ Oct | _ = 31
+  daysInMonth'' _ Nov | _ = 30
+  daysInMonth'' _ Dec | _ = 31
+
 ||| Number of days in the given month and year
 daysInMonth'
   :  (year : Integer)
   -> {auto 0 isValidYear : 0 < year}
   -> Month
   -> Integer
-daysInMonth' year Jan = 31
-daysInMonth' year Feb = if isLeap' year then 29 else 28
-daysInMonth' year Mar = 31
-daysInMonth' year Apr = 30
-daysInMonth' year May = 31
-daysInMonth' year Jun = 30
-daysInMonth' year Jul = 31
-daysInMonth' year Aug = 31
-daysInMonth' year Sep = 30
-daysInMonth' year Oct = 31
-daysInMonth' year Nov = 30
-daysInMonth' year Dec = 31
+daysInMonth' year month = daysInMonth'' year month
 
 ||| Number of days before January 1st of the given year.
 daysBeforeYear : (y : Nat) -> {auto _ : NonZero y} -> Nat
@@ -175,6 +198,12 @@ daysBeforeYear'
   -> {auto 0 isValidYear : 0 < year}
   -> Integer
 daysBeforeYear' year =
+  (year - 1) * 365 + div year 4 - div year 100 + div year 400
+
+daysBeforeYear''
+  :  (year : Integer)
+  -> Integer
+daysBeforeYear'' year =
   (year - 1) * 365 + div year 4 - div year 100 + div year 400
 
 ||| Number of days in year preceding first day of month.
@@ -202,6 +231,17 @@ daysBeforeMonth' year month =
     prev : Month
     prev = prevMonth month
 
+daysBeforeMonth''
+  :  (year : Integer)
+  -> Month
+  -> Integer
+daysBeforeMonth'' year Jan   = 0
+daysBeforeMonth'' year month =
+  daysInMonth'' year prev + daysBeforeMonth'' year (assert_smaller month prev)
+  where
+    prev : Month
+    prev = prevMonth month
+
 ||| Number of days inthe given year
 daysInYear : (y : Nat) -> Nat
 daysInYear y = if isLeap y then 366 else 365
@@ -224,12 +264,34 @@ data Date : Type where
     -> {0    _ : LTE day (daysInMonth year month)}
     -> Date
 
-||| A validated YMD triple
-|||
-||| e.g. 2023-Jan-0, 2023-Feb-29, 2012-Aug-35 are not allowed
+||| A (Gregorian) calendar date
 export
 data Date' : Type where
-  Valid'
+  MkDate
+    :  (year  : Integer)
+    -> (month : Month)
+    -> (day   : Integer)
+    -> Date'
+
+public export
+mkDate
+  :  (year : Integer)
+  -> (month : Month)
+  -> (day : Integer)
+  -> Either DateTimeException Date'
+mkDate year month day with (year > 0)
+  mkDate year _ _ | False = Left (YearLowerThanOne year)
+  mkDate year month day | True with (day > 0)
+    mkDate _ _ day | True | False = Left (DayLowerThanOne day)
+    mkDate year month day | True | True with ((daysInMonth'' year month) + 1 > day)
+      mkDate year month day | True | True | False = Left (DateDoesNotExist year month day)
+      mkDate year month day | True | True | True  = Right (MkDate year month day)
+
+||| Return a (Gregorian) calendar `Date`.
+||| The arguments are statically validated.
+||| e.g. 2023 Jan 0, 2023 Feb 29, 2012 Aug 35 are not allowed.
+public export
+mkDate'
     :  (year  : Integer)
     -> (month : Month)
     -> (day   : Integer)
@@ -237,6 +299,13 @@ data Date' : Type where
     -> {auto 0 isAboveZeroDay   : 0 < day}
     -> {auto 0 isNotAboveMaxDay : day < (daysInMonth' year month) + 1}
     -> Date'
+mkDate' year month day = MkDate year month day
+
+date2Ord : Date' -> Integer
+date2Ord (MkDate year Jan day) =
+  daysBeforeYear'' year + day
+date2Ord (MkDate year month day) =
+  daysBeforeYear'' year + daysBeforeMonth'' year month + day
 
 ||| Number of days in 400 years
 DI400Y : Nat
@@ -330,8 +399,33 @@ public export
 ord2ym
   :  (ord : Integer)
   -> {auto 0 isAbove0 : 0 < ord}
-  -> (Double, Double, Double)
-ord2ym ord = julianDayToGregorian (-306) (fromInteger ord)
+  -> Date'
+ord2ym ord = toDate $ julianDayToGregorian (-306) (fromInteger ord)
+   where
+      toMonth : Double -> Month
+      toMonth 1 = Jan
+      toMonth 2 = Feb
+      toMonth 3 = Mar
+      toMonth 4 = Apr
+      toMonth 5 = May
+      toMonth 6 = Jun
+      toMonth 7 = Jul
+      toMonth 8 = Aug
+      toMonth 9 = Sep
+      toMonth 10 = Oct
+      toMonth 11 = Nov
+      toMonth 12 = Dec
+      toMonth _ = Jan
+
+      toDate : (Double, Double, Double) -> Date'
+      toDate (year, month, day) =
+        MkDate (cast year) (toMonth month) (cast day)
+
+ord2ym_is_correct : 1 = date2Ord (ord2ym 1)
+ord2ym_is_correct = Refl
+
+test : (n : Integer) -> {auto 0 prf : 0 < n} -> {auto 0 test : n = date2Ord (ord2ym n)} -> Bool
+test _ = True
 
   {-
 ||| Recursively find month and day for given year and day of year
