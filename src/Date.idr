@@ -84,115 +84,66 @@ nextMonth Oct = Nov
 nextMonth Nov = Dec
 nextMonth Dec = Jan
 
-||| True if leap year, else False
-isLeap' : (year : Integer) -> {auto 0 isValidYear : 0 < year} -> Bool
-isLeap' year =
+||| True if the year is above is a leap year.
+||| Year 0 is a considered as a leap year.
+||| Negative years follow the same rules as positive year.
+||| For example, -4 is a leap year, but not -100.
+isLeap : (year : Integer) -> Bool
+isLeap year =
   let
     nthYear : Integer -> Bool
     nthYear n = mod year n == 0
   in
     (nthYear 4) && (not (nthYear 100) || (nthYear 400))
 
-||| True if the year is above 0 and is a leap year, else False
-isLeap'' : (year : Integer) -> Bool
-isLeap'' year =
-  let
-    nthYear : Integer -> Bool
-    nthYear n = mod year n == 0
-  in
-    year > 0 && (nthYear 4) && (not (nthYear 100) || (nthYear 400))
-
-daysInMonth''
-  :  (year : Integer)
-  -> Month
-  -> Integer
-daysInMonth'' year month with (if year < 1 then 0 else year)
-  daysInMonth'' _ _   | 0 = 0
-  daysInMonth'' _ Jan | _ = 31
-  daysInMonth'' year Feb | _ = if isLeap'' year then 29 else 28
-  daysInMonth'' _ Mar | _ = 31
-  daysInMonth'' _ Apr | _ = 30
-  daysInMonth'' _ May | _ = 31
-  daysInMonth'' _ Jun | _ = 30
-  daysInMonth'' _ Jul | _ = 31
-  daysInMonth'' _ Aug | _ = 31
-  daysInMonth'' _ Sep | _ = 30
-  daysInMonth'' _ Oct | _ = 31
-  daysInMonth'' _ Nov | _ = 30
-  daysInMonth'' _ Dec | _ = 31
-
-||| Number of days in the given month and year
-daysInMonth'
-  :  (year : Integer)
-  -> {auto 0 isValidYear : 0 < year}
-  -> Month
-  -> Integer
-daysInMonth' year month = daysInMonth'' year month
+||| Number of days in the given month and year.
+daysInMonth : (year : Integer) -> Month -> Integer
+daysInMonth _ Jan = 31
+daysInMonth year Feb = if isLeap year then 29 else 28
+daysInMonth _ Mar = 31
+daysInMonth _ Apr = 30
+daysInMonth _ May = 31
+daysInMonth _ Jun = 30
+daysInMonth _ Jul = 31
+daysInMonth _ Aug = 31
+daysInMonth _ Sep = 30
+daysInMonth _ Oct = 31
+daysInMonth _ Nov = 30
+daysInMonth _ Dec = 31
 
 ||| Number of days before January 1st of the given year.
-daysBeforeYear'
-  :  (year : Integer)
-  -> {auto 0 isValidYear : 0 < year}
-  -> Integer
-daysBeforeYear' year =
-  (year - 1) * 365 + div year 4 - div year 100 + div year 400
-
-daysBeforeYear''
-  :  (year : Integer)
-  -> Integer
-daysBeforeYear'' year =
+daysBeforeYear : (year : Integer) -> Integer
+daysBeforeYear year =
   (year - 1) * 365 + div year 4 - div year 100 + div year 400
 
 ||| Number of days in year preceding first day of month.
-daysBeforeMonth'
-  :  (year : Integer)
-  -> {auto 0 isValidYear : 0 < year}
-  -> Month
-  -> Integer
-daysBeforeMonth' year Jan   = 0
-daysBeforeMonth' year month =
-  daysInMonth' year prev + daysBeforeMonth' year (assert_smaller month prev)
-  where
-    prev : Month
-    prev = prevMonth month
-
-daysBeforeMonth''
-  :  (year : Integer)
-  -> Month
-  -> Integer
-daysBeforeMonth'' year Jan   = 0
-daysBeforeMonth'' year month =
-  daysInMonth'' year prev + daysBeforeMonth'' year (assert_smaller month prev)
+daysBeforeMonth : (year : Integer) -> Month -> Integer
+daysBeforeMonth year Jan   = 0
+daysBeforeMonth year month =
+  daysInMonth year prev + daysBeforeMonth year (assert_smaller month prev)
   where
     prev : Month
     prev = prevMonth month
 
 ||| Number of days in the given year
-daysInYear' : (year : Integer) -> {auto 0 isValidYear : 0 < year} -> Integer
-daysInYear' year = if isLeap' year then 366 else 365
+daysInYear : (year : Integer) -> Integer
+daysInYear year = if isLeap year then 366 else 365
 
-||| A (Gregorian) calendar date
+||| A Gregorian calendar date
 export
-data Date' : Type where
-  MkDate
-    :  (year  : Integer)
-    -> (month : Month)
-    -> (day   : Integer)
-    -> Date'
+data Date : Type where
+  MkDate : (year  : Integer) -> (month : Month) -> (day   : Integer) -> Date
 
 public export
 mkDate
   :  (year : Integer)
   -> (month : Month)
   -> (day : Integer)
-  -> Either DateTimeException Date'
-mkDate year month day with (year > 0)
-  mkDate year _ _ | False = Left (YearLowerThanOne year)
-  mkDate year month day | True with (day > 0)
-    mkDate _ _ day | True | False = Left (DayLowerThanOne day)
-    mkDate year month day | True | True with ((daysInMonth'' year month) + 1 > day)
-      mkDate year month day | True | True | False = Left (DateDoesNotExist year month day)
-      mkDate year month day | True | True | True  = Right (MkDate year month day)
+  -> Either DateTimeException Date
+mkDate year month day with (day > 0, (daysInMonth year month) + 1 > day)
+  mkDate year month day | (True , True ) = Right (MkDate year month day)
+  mkDate _    _     day | (False, _    ) = Left (DayLowerThanOne day)
+  mkDate year month day | (_    , False) = Left (DateDoesNotExist year month day)
 
 ||| Return a (Gregorian) calendar `Date`.
 ||| The arguments are statically validated.
@@ -202,37 +153,35 @@ mkDate'
     :  (year  : Integer)
     -> (month : Month)
     -> (day   : Integer)
-    -> {auto 0 isValidYear      : 0 < year}
     -> {auto 0 isAboveZeroDay   : 0 < day}
-    -> {auto 0 isNotAboveMaxDay : day < (daysInMonth' year month) + 1}
-    -> Date'
+    -> {auto 0 isNotAboveMaxDay : day < (daysInMonth year month) + 1}
+    -> Date
 mkDate' year month day = MkDate year month day
 
-date2Ord : Date' -> Integer
-date2Ord (MkDate year Jan day) =
-  daysBeforeYear'' year + day
+date2Ord : Date -> Integer
+date2Ord (MkDate year Jan   day) = daysBeforeYear year + day
 date2Ord (MkDate year month day) =
-  daysBeforeYear'' year + daysBeforeMonth'' year month + day
+  daysBeforeYear year + daysBeforeMonth year month + day
 
 ||| Number of days in 400 years
-DI400Y' : Integer
-DI400Y' = daysBeforeYear' 401
+DI400Y : Integer
+DI400Y = daysBeforeYear 401
 
 ||| Number of days in 100 years
-DI100Y' : Integer
-DI100Y' = daysBeforeYear' 101
+DI100Y : Integer
+DI100Y = daysBeforeYear 101
 
 ||| Number of days in 4 years
-DI4Y' : Integer
-DI4Y' = daysBeforeYear' 5
+DI4Y : Integer
+DI4Y = daysBeforeYear 5
 
-DI4Y_is_correct : DI4Y' = (4 * 365 + 1)
+DI4Y_is_correct : DI4Y = (4 * 365 + 1)
 DI4Y_is_correct = Refl
 
-DI100Y_is_correct : DI100Y'  = 25 * DI4Y' - 1
+DI100Y_is_correct : DI100Y  = 25 * DI4Y - 1
 DI100Y_is_correct = Refl
 
-DIY_400Y_is_correct : DI400Y' = (4 * DI100Y' + 1)
+DIY_400Y_is_correct : DI400Y = (4 * DI100Y + 1)
 DIY_400Y_is_correct = Refl
 
 ||| Convert a Julian Day count set at an arbitrary point in time to
@@ -291,10 +240,7 @@ julianDayToGregorian cst jd =
 
 ||| Gregorian ordinal to (Gregorian) `Date` considering 1-Jan-1 as day 1
 public export
-ord2ym
-  :  (ord : Integer)
-  -> {auto 0 isAbove0 : 0 < ord}
-  -> Date'
+ord2ym : (ord : Integer) -> Date
 ord2ym ord = toDate $ julianDayToGregorian (-306) (fromInteger ord)
    where
       toMonth : Double -> Month
@@ -312,14 +258,14 @@ ord2ym ord = toDate $ julianDayToGregorian (-306) (fromInteger ord)
       toMonth 12 = Dec
       toMonth _ = Jan
 
-      toDate : (Double, Double, Double) -> Date'
+      toDate : (Double, Double, Double) -> Date
       toDate (year, month, day) =
         MkDate (cast year) (toMonth month) (cast day)
 
 ord2ym_is_correct : 1 = date2Ord (ord2ym 1)
 ord2ym_is_correct = Refl
 
-test : (n : Integer) -> {auto 0 prf : 0 < n} -> {auto 0 test : n = date2Ord (ord2ym n)} -> Bool
+test : (n : Integer) -> {auto 0 test : n = date2Ord (ord2ym n)} -> Bool
 test _ = True
 
 {-
