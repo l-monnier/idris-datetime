@@ -23,8 +23,6 @@
 
 module Date
 
-import Decidable.Equality
-
 %default total
 
 ||| "Lower than" proof.
@@ -89,7 +87,7 @@ nextMonth Oct = Nov
 nextMonth Nov = Dec
 nextMonth Dec = Jan
 
-fromMonth : Month -> Double
+fromMonth : Month -> Integer
 fromMonth Jan = 1
 fromMonth Feb = 2
 fromMonth Mar = 3
@@ -174,29 +172,60 @@ mkDate'
     -> Date
 mkDate' year month day = MkDate year month day
 
+||| Convert a Gregorian Date to a Julian day.
+|||
+||| The first argument is the number of day between the arbitray point
+||| and the date 1-Mar-0.
+||| The second argument is the Gregorian Date to convert.
+|||
+||| The alorgorithm used is the one of Peter Baum in his article Date Algorithms:
+||| https://www.researchgate.net/publication/316558298_Date_Algorithms
+dateToJulianDay : (cst : Integer) -> Date -> Integer
+dateToJulianDay cst (MkDate year month day) =
+    day + f month + cast (365 * z) + cast (floor (z / 4) - floor(z / 100) + floor (z / 400)) + cst
+  where
+
+    month' : Integer
+    month' = fromMonth month
+
+    -- The year with a shift of minus 14 months
+    z : Double
+    z = fromInteger year + fix ((fromInteger month' - 14) / 12)
+
+    -- List of days in the year for a given month.
+    -- The begining of the year being shifted to March,
+    -- the 3rd value of the list is 0.
+    f : Month -> Integer
+    f Jan = 306
+    f Feb = 337
+    f Mar = 0
+    f Apr = 31
+    f May = 61
+    f Jun = 92
+    f Jul = 122
+    f Aug = 153
+    f Sep = 184
+    f Oct = 214
+    f Nov = 245
+    f Dec = 275
+
 ||| Convert a Gregorian date to a Gregorian ordinal number.
+|||
+||| Note that from our tests, the function converts correctly dates up
+||| to years as big as +/- 2,737,907,006,989.
+||| Around such years, roundings will cause the algorithm to provide
+||| incorrect results.
+||| For example, 27379070069886 Jan 28 is incorrectly converted to
+||| 10^16 - 1 while the result should be 10^16.
 public export
 date2Ord : Date -> Integer
-date2Ord (MkDate year month day) = cast $
-    (fromInteger day) + fix ((153 * month' - 457) / 5) + 365 * year' + floor (year' / 4) - floor (year' / 100) + floor (year' / 400) - 306
-  where
-    month'' : Double
-    month'' = fromMonth month
-
-    adjust : (Integer, Double)
-    adjust = if month'' < 3 then (year - 1, month'' + 12) else (year, month'')
-
-    year' : Double
-    year' = fromInteger (fst adjust)
-
-    month' : Double
-    month' = snd adjust
+date2Ord = dateToJulianDay (-306)
 
 ||| Convert a Julian Day count set at an arbitrary point in time to
 ||| a Gregorian Date typle (year, month, day).
 |||
 ||| The first argument is the number of day between the arbitray point
-||| and the (virtual) date 1-Mar-0.
+||| and the date 1-Mar-0.
 ||| The second argument is the Julian Day count to convert.
 |||
 ||| The alorgorithm used is the one of Peter Baum in his article Date Algorithms:
@@ -253,8 +282,8 @@ ord2ym ord = toDate $ julianDayToGregorian (-306) (fromInteger ord)
 --ord2ym_is_correct : 1 = date2Ord (ord2ym 1)
 --ord2ym_is_correct = Refl
 
-test : (n : Integer) -> {auto 0 test : n = date2Ord (ord2ym n)} -> Bool
-test _ = True
+test : (n : Integer) -> Bool
+test x = date2Ord (ord2ym x) == x
 
 {-
 ||| Proleptic Gregorian ordinal for the year, month and day.
