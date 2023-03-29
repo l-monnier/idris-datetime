@@ -145,27 +145,6 @@ daysInMonth _ Oct = 31
 daysInMonth _ Nov = 30
 daysInMonth _ Dec = 31
 
-||| Number of days before January 1st of the given year.
-daysBeforeYear : (year : Integer) -> Integer
-daysBeforeYear year = cast $
-    (year' - 1) * 365 + year' / 4 - year' / 100 + year' / 400
-  where
-    year' : Double
-    year' = fromInteger year
-
-||| Number of days in year preceding first day of month.
-daysBeforeMonth : (year : Integer) -> Month -> Integer
-daysBeforeMonth year Jan   = 0
-daysBeforeMonth year month =
-  daysInMonth year prev + daysBeforeMonth year (assert_smaller month prev)
-  where
-    prev : Month
-    prev = prevMonth month
-
-||| Number of days in the given year
-daysInYear : (year : Integer) -> Integer
-daysInYear year = if isLeap year then 366 else 365
-
 ||| A Gregorian calendar date
 export
 data Date : Type where
@@ -210,27 +189,6 @@ date2Ord (MkDate year month day) = cast $
 
     month' : Double
     month' = snd adjust
-
-||| Number of days in 400 years
-DI400Y : Integer
-DI400Y = daysBeforeYear 401
-
-||| Number of days in 100 years
-DI100Y : Integer
-DI100Y = daysBeforeYear 101
-
-||| Number of days in 4 years
-DI4Y : Integer
-DI4Y = daysBeforeYear 5
-
-DI4Y_is_correct : DI4Y = (4 * 365 + 1)
-DI4Y_is_correct = Refl
-
-DI100Y_is_correct : DI100Y  = 25 * DI4Y - 1
-DI100Y_is_correct = Refl
-
-DIY_400Y_is_correct : DI400Y = (4 * DI100Y + 1)
-DIY_400Y_is_correct = Refl
 
 ||| Convert a Julian Day count set at an arbitrary point in time to
 ||| a Gregorian Date typle (year, month, day).
