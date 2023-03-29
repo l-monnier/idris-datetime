@@ -174,6 +174,8 @@ mkDate'
     -> Date
 mkDate' year month day = MkDate year month day
 
+||| Convert a Gregorian date to a Gregorian ordinal number.
+public export
 date2Ord : Date -> Integer
 date2Ord (MkDate year month day) = cast $
     (fromInteger day) + fix ((153 * month' - 457) / 5) + 365 * year' + floor (year' / 4) - floor (year' / 100) + floor (year' / 400) - 306
