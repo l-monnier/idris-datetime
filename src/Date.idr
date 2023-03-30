@@ -195,6 +195,21 @@ mkDate'
     -> Date
 mkDate' year month day = MkDate year month day
 
+||| Project the year from a Date.
+public export
+year : Date -> Integer
+year (MkDate y _ _) = y
+
+||| Project the month from a Date.
+public export
+month : Date -> Month
+month (MkDate _ m _) = m
+
+||| Project the day from a Date.
+public export
+day : Date -> Integer
+day (MkDate _ _ d) = d
+
 ||| Convert a Gregorian Date to a Julian day.
 |||
 ||| The first argument is the number of day between the arbitray point
@@ -313,33 +328,3 @@ rdToDate_1_is_correct = Refl
 
 rdToDate_10_15_is_correct : 1000000000000000 = dateToRD (rdToDate $ 1000000000000000)
 rdToDate_10_15_is_correct = Refl
-{-
-||| Proleptic Gregorian ordinal for the year, month and day.
-|||
-||| January 1 of year 1 is day 1.
-public export
-toOrdinal : Date -> Nat
-toOrdinal (MkDate ord) = ord
-
-||| Project the year, month, and day from a Date.
-public export
-toYMD : Date -> (Nat, Month, Nat)
-toYMD (MkDate date) = ord2ymd date
-
-||| Project the year from a Date.
-public export
-year : Date -> Nat
-year date = fst (toYMD date)
-
-||| Project the month from a Date
-public export
-month : Date -> Month
-month date = let (_, m, _ ) := (toYMD date) in m
-
-||| Project the day from a Date
-public export
-day : Date -> Month
-day date = let (_, _, d) := (toYMD date) in d
-
-
--}
