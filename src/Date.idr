@@ -279,11 +279,11 @@ ord2ym ord = toDate $ julianDayToGregorian (-306) (fromInteger ord)
       toDate (year, month, day) =
         MkDate (cast year) (toMonth month) (cast day)
 
---ord2ym_is_correct : 1 = date2Ord (ord2ym 1)
---ord2ym_is_correct = Refl
+ord2ym_1_is_correct : 1 = date2Ord (ord2ym 1)
+ord2ym_1_is_correct = Refl
 
-test : (n : Integer) -> Bool
-test x = date2Ord (ord2ym x) == x
+ord2ym_10_15_is_correct : 1000000000000000 = date2Ord (ord2ym $ 1000000000000000)
+ord2ym_10_15_is_correct = Refl
 
 {-
 ||| Proleptic Gregorian ordinal for the year, month and day.
