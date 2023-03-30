@@ -51,6 +51,28 @@ data Month
   | Nov
   | Dec
 
+-- Count of days with different epochs.
+
+||| The Julian Day (JD) is the count of days since January 1st 4713 BC (-4712).
+public export
+data JD = MkJD Integer
+
+public export
+Num JD where
+  (MkJD x) + (MkJD y) = MkJD (x + y)
+  (MkJD x) * (MkJD y) = MkJD (x * y)
+  fromInteger = MkJD
+
+||| The Rata Die number is the count of days since December 31 of the year 0.
+public export
+data RD = MkRD Integer
+
+public export
+Num RD where
+  (MkRD x) + (MkRD y) = MkRD (x + y)
+  (MkRD x) * (MkRD y) = MkRD (x * y)
+  fromInteger = MkRD
+
 ||| Exceptions
 data DateTimeException =
     DayLowerThanOne Integer
@@ -117,6 +139,7 @@ toMonth 12 = Dec
 toMonth _ = Jan
 
 ||| True if the year is above is a leap year.
+|||
 ||| Year 0 is a considered as a leap year.
 ||| Negative years follow the same rules as positive year.
 ||| For example, -4 is a leap year, but not -100.
@@ -180,9 +203,11 @@ mkDate' year month day = MkDate year month day
 |||
 ||| The alorgorithm used is the one of Peter Baum in his article Date Algorithms:
 ||| https://www.researchgate.net/publication/316558298_Date_Algorithms
-dateToJulianDay : (cst : Integer) -> Date -> Integer
+dateToJulianDay : (cst : Double) -> Date -> Integer
 dateToJulianDay cst (MkDate year month day) =
-    day + f month + cast (365 * z) + cast (floor (z / 4) - floor(z / 100) + floor (z / 400)) + cst
+      day
+    + f month
+    + cast (365 * z) + cast (floor (z / 4) - floor(z / 100) + floor (z / 400) + cst)
   where
 
     month' : Integer
@@ -209,7 +234,12 @@ dateToJulianDay cst (MkDate year month day) =
     f Nov = 245
     f Dec = 275
 
-||| Convert a Gregorian date to a Gregorian ordinal number.
+||| Convert a Gregorian date to a Julian Day (JD) count.
+public export
+dateToJD : Date -> JD
+dateToJD = MkJD . dateToJulianDay 1721118.5
+
+||| Convert a Gregorian date to a Rata Die number.
 |||
 ||| Note that from our tests, the function converts correctly dates up
 ||| to years as big as +/- 2,737,907,006,989.
@@ -218,8 +248,8 @@ dateToJulianDay cst (MkDate year month day) =
 ||| For example, 27379070069886 Jan 28 is incorrectly converted to
 ||| 10^16 - 1 while the result should be 10^16.
 public export
-date2Ord : Date -> Integer
-date2Ord = dateToJulianDay (-306)
+dateToRD : Date -> RD
+dateToRD = MkRD . dateToJulianDay (-306)
 
 ||| Convert a Julian Day count set at an arbitrary point in time to
 ||| a Gregorian Date typle (year, month, day).
@@ -270,21 +300,19 @@ julianDayToGregorian cst jd =
     day : Double
     day = c - fix ((153 * month - 457) / 5) + r
 
-||| Gregorian ordinal to (Gregorian) `Date` considering 1-Jan-1 as day 1
+||| Rata Die number to Gregorian Date.
 public export
-ord2ym : (ord : Integer) -> Date
-ord2ym ord = toDate $ julianDayToGregorian (-306) (fromInteger ord)
-   where
-      toDate : (Double, Double, Double) -> Date
-      toDate (year, month, day) =
-        MkDate (cast year) (toMonth month) (cast day)
+rdToDate : RD -> Date
+rdToDate (MkRD ord) = toDate $ julianDayToGregorian (-306) (fromInteger ord)
+  where
+    toDate : (Double, Double, Double) -> Date
+    toDate (year, month, day) = MkDate (cast year) (toMonth month) (cast day)
 
-ord2ym_1_is_correct : 1 = date2Ord (ord2ym 1)
-ord2ym_1_is_correct = Refl
+rdToDate_1_is_correct : 1 = dateToRD (rdToDate 1)
+rdToDate_1_is_correct = Refl
 
-ord2ym_10_15_is_correct : 1000000000000000 = date2Ord (ord2ym $ 1000000000000000)
-ord2ym_10_15_is_correct = Refl
-
+rdToDate_10_15_is_correct : 1000000000000000 = dateToRD (rdToDate $ 1000000000000000)
+rdToDate_10_15_is_correct = Refl
 {-
 ||| Proleptic Gregorian ordinal for the year, month and day.
 |||
