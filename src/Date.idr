@@ -328,3 +328,35 @@ rdToDate_1_is_correct = Refl
 
 rdToDate_10_15_is_correct : 1000000000000000 = dateToRD (rdToDate $ 1000000000000000)
 rdToDate_10_15_is_correct = Refl
+
+-- Operations on Date.
+
+||| Add years to a Date.
+|||
+||| You can also add negative value to substract years from a Date.
+public export
+addYears : Date -> Integer -> Date
+addYears (MkDate year month day) years = MkDate (year + years) month day
+
+||| Add months to a Date.
+|||
+||| You can also add negative values to substract months from a Date.
+public export
+addMonths : Date -> Integer -> Date
+addMonths (MkDate year month day) months = MkDate year' month' day
+  where
+    m : Integer
+    m = (fromMonth month) + months
+
+    year' : Integer
+    year' = year + (div m 12)
+
+    month' : Month
+    month' = toMonth . fromInteger $ mod m 12
+
+||| Add days to a Date.
+|||
+||| You can also add negative values to substract months from a Date.
+public export
+addDays : Date -> Integer -> Date
+addDays date days = rdToDate $ (dateToRD date) + fromInteger days
