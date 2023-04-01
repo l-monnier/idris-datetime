@@ -210,7 +210,7 @@ public export
 day : Date -> Integer
 day (MkDate _ _ d) = d
 
-||| Convert a Gregorian Date to a Julian day.
+||| Convert a Gregorian Date to an arbitrary day count.
 |||
 ||| The first argument is the number of day between the arbitray point
 ||| and the date 1-Mar-0.
@@ -218,8 +218,8 @@ day (MkDate _ _ d) = d
 |||
 ||| The alorgorithm used is the one of Peter Baum in his article Date Algorithms:
 ||| https://www.researchgate.net/publication/316558298_Date_Algorithms
-dateToJulianDay : (cst : Double) -> Date -> Integer
-dateToJulianDay cst (MkDate year month day) =
+dateToDayCount : (cst : Double) -> Date -> Integer
+dateToDayCount cst (MkDate year month day) =
       day
     + f month
     + cast (365 * z) + cast (floor (z / 4) - floor(z / 100) + floor (z / 400) + cst)
@@ -252,7 +252,7 @@ dateToJulianDay cst (MkDate year month day) =
 ||| Convert a Gregorian date to a Julian Day (JD) count.
 public export
 dateToJD : Date -> JD
-dateToJD = MkJD . dateToJulianDay 1721118.5
+dateToJD = MkJD . dateToDayCount 1721118.5
 
 ||| Convert a Gregorian date to a Rata Die number.
 |||
@@ -264,22 +264,22 @@ dateToJD = MkJD . dateToJulianDay 1721118.5
 ||| 10^16 - 1 while the result should be 10^16.
 public export
 dateToRD : Date -> RD
-dateToRD = MkRD . dateToJulianDay (-306)
+dateToRD = MkRD . dateToDayCount (-306)
 
-||| Convert a Julian Day count set at an arbitrary point in time to
+||| Convert a day count set from an arbitrary point in time to
 ||| a Gregorian Date typle (year, month, day).
 |||
 ||| The first argument is the number of day between the arbitray point
 ||| and the date 1-Mar-0.
-||| The second argument is the Julian Day count to convert.
+||| The second argument is the day count to convert.
 |||
-||| The alorgorithm used is the one of Peter Baum in his article Date Algorithms:
+||| The algorithm used is the one of Peter Baum in his article Date Algorithms:
 ||| https://www.researchgate.net/publication/316558298_Date_Algorithms
-julianDayToGregorian : Double -> Double -> (Double, Double, Double)
-julianDayToGregorian cst jd =
+dayCountToDate : Double -> Double -> Date
+dayCountToDate cst jd =
   if month > 12
-  then (year + 1, month - 12, day)
-  else (year, month, day)
+  then MkDate (cast $ year + 1) (toMonth $ month - 12) day
+  else MkDate (cast year) (toMonth month) day
   where
 
     -- Gregorian ordinal adjusted to a reference point set on 1 March 0
@@ -312,16 +312,18 @@ julianDayToGregorian cst jd =
     month : Double
     month = fix ((5 * c + 456) / 153)
 
-    day : Double
-    day = c - fix ((153 * month - 457) / 5) + r
+    day : Integer
+    day = cast $ c - fix ((153 * month - 457) / 5) + r
 
 ||| Rata Die number to Gregorian Date.
 public export
 rdToDate : RD -> Date
-rdToDate (MkRD ord) = toDate $ julianDayToGregorian (-306) (fromInteger ord)
-  where
-    toDate : (Double, Double, Double) -> Date
-    toDate (year, month, day) = MkDate (cast year) (toMonth month) (cast day)
+rdToDate (MkRD ord) = dayCountToDate (-306) (fromInteger ord)
+
+||| Julian Day to Gregorian Date.
+public export
+jdToDate : JD -> Date
+jdToDate (MkJD ord) = dayCountToDate 1721118.5 (fromInteger ord)
 
 rdToDate_1_is_correct : 1 = dateToRD (rdToDate 1)
 rdToDate_1_is_correct = Refl
