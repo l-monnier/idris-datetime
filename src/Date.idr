@@ -316,7 +316,6 @@ dayCountToDate cst jd =
     day = cast $ c - fix ((153 * month - 457) / 5) + r
 
 ||| Rata Die number to Gregorian Date.
-public export
 rdToDate : RD -> Date
 rdToDate (MkRD ord) = dayCountToDate (-306) (fromInteger ord)
 
@@ -325,30 +324,38 @@ public export
 jdToDate : JD -> Date
 jdToDate (MkJD ord) = dayCountToDate 1721118.5 (fromInteger ord)
 
-rdToDate_1_is_correct : 1 = dateToRD (rdToDate 1)
-rdToDate_1_is_correct = Refl
-
-rdToDate_10_15_is_correct : 1000000000000000 = dateToRD (rdToDate $ 1000000000000000)
-rdToDate_10_15_is_correct = Refl
-
 -- Operations on Date.
 
-||| Add years to a Date.
-|||
-||| You can also add negative value to substract years from a Date.
+||| An amount of time expressed in years, months and/or days.
 public export
-addYears : Date -> Integer -> Date
-addYears (MkDate year month day) years = MkDate (year + years) month day
+record Period where
+  constructor MkPeriod
+  years, months, days : Integer
 
-||| Add months to a Date.
-|||
-||| You can also add negative values to substract months from a Date.
+||| Add two Periods.
 public export
-addMonths : Date -> Integer -> Date
-addMonths (MkDate year month day) months = MkDate year' month' day
+Semigroup Period where
+  period1 <+> period2 =
+    { years  $= (+ period2.years)
+    , months $= (+ period2.months)
+    , days   $= (+ period2.days)
+    } period1
+
+||| A Period with all values set to 0.
+public export
+Monoid Period where
+  neutral = MkPeriod 0 0 0
+
+||| Add a Period of time to a Gregorian Date.
+addPeriodToDate : Date -> Period -> Date
+addPeriodToDate (MkDate year month day) (MkPeriod years 0 0) =
+  MkDate (year + years) month day
+  -- TODO optimize when only a month is provided and not a day.
+addPeriodToDate (MkDate year month day) period = rdToDate $
+  (dateToRD $ MkDate (year + period.years) month' day) + fromInteger period.days
   where
     m : Integer
-    m = (fromMonth month) + months
+    m = (fromMonth month) + period.months
 
     year' : Integer
     year' = year + (div m 12)
@@ -356,9 +363,20 @@ addMonths (MkDate year month day) months = MkDate year' month' day
     month' : Month
     month' = toMonth . fromInteger $ mod m 12
 
-||| Add days to a Date.
-|||
-||| You can also add negative values to substract months from a Date.
-public export
-addDays : Date -> Integer -> Date
-addDays date days = rdToDate $ (dateToRD date) + fromInteger days
+||| Add a Period of time to a Rata Die number.
+addPeriodToRd : RD -> Period -> RD
+addPeriodToRd (MkRD ord) (MkPeriod 0 0 days) = MkRD (ord + days)
+addPeriodToRd rd period = dateToRD $ addPeriodToDate (rdToDate rd) period
+
+||| Add a Period of time to a Julian Day number.
+addPeriodToJd : JD -> Period -> JD
+addPeriodToJd (MkJD ord) (MkPeriod 0 0 days) = MkJD (ord + days)
+addPeriodToJd jd period = dateToJD $ addPeriodToDate (jdToDate jd) period
+
+-- Tests.
+
+rdToDate_1_is_correct : 1 = dateToRD (rdToDate 1)
+rdToDate_1_is_correct = Refl
+
+rdToDate_10_15_is_correct : 1000000000000000 = dateToRD (rdToDate 1000000000000000)
+rdToDate_10_15_is_correct = Refl
