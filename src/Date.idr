@@ -324,6 +324,46 @@ public export
 jdToDate : JD -> Date
 jdToDate (MkJD ord) = dayCountToDate 1721118.5 (fromInteger ord)
 
+-- Day of the week.
+
+||| Day of the week.
+data Weekday
+  = Sun
+  | Mon
+  | Tue
+  | Wed
+  | Thu
+  | Fri
+  | Sat
+
+||| Day of the week from Integer.
+|||
+||| 0 will be converted to Sun, 1 to Mon, etc.
+|||
+||| Values lower than 0 or greater than 6 will be converted
+||| to their modulo 7, so the function is total.
+toWeekday : Integer -> Weekday
+toWeekday 0 = Sun
+toWeekday 1 = Mon
+toWeekday 2 = Tue
+toWeekday 3 = Wed
+toWeekday 4 = Thu
+toWeekday 5 = Fri
+toWeekday 6 = Sat
+toWeekday x = toWeekday $ assert_smaller x (mod x 7)
+
+||| Day of the week for a given Rata Die number.
+rdToWeekday : RD -> Weekday
+rdToWeekday (MkRD ord) = toWeekday $ mod ord 7
+
+||| Day of the week for a given Julian Day.
+jdToWeekday : JD -> Weekday
+jdToWeekday (MkJD ord) = toWeekday $ mod (ord + 2) 7
+
+||| Day of the week for a given Gregorian Date.
+dateToWeekday : Date -> Weekday
+dateToWeekday = rdToWeekday . dateToRD
+
 -- Operations on Date.
 
 ||| An amount of time expressed in years, months and/or days.
