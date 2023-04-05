@@ -27,11 +27,13 @@ module Date
 
 ||| "Lower than" proof.
 ||| TODO: consider moving it to its own module.
+public export
 data (<) : (m,n : Integer) -> Type where
   LT : {0 m,n : Integer} -> (0 prf : (m < n) === True) -> m < n
 
 ||| Drop the fraction of the provided number.
 ||| For example: -1.5 becomes -1 and 1.5 becomes 1
+private
 fix : Double -> Double
 fix x = if x < 0 then ceiling x else floor x
 
@@ -74,12 +76,14 @@ Num RD where
   fromInteger = MkRD
 
 ||| Exceptions
+public export
 data DateTimeException =
     DayLowerThanOne Integer
+  | DayIsTooGreat Integer
   | DateDoesNotExist Integer Month Integer
-  | YearLowerThanOne Integer
 
 ||| Return the previous month for the given month
+private
 prevMonth : Month -> Month
 prevMonth Jan = Dec
 prevMonth Feb = Jan
@@ -95,6 +99,7 @@ prevMonth Nov = Oct
 prevMonth Dec = Nov
 
 ||| Return the next month for the given month
+private
 nextMonth : Month -> Month
 nextMonth Jan = Feb
 nextMonth Feb = Mar
@@ -109,6 +114,7 @@ nextMonth Oct = Nov
 nextMonth Nov = Dec
 nextMonth Dec = Jan
 
+private
 fromMonth : Month -> Integer
 fromMonth Jan = 1
 fromMonth Feb = 2
@@ -123,6 +129,7 @@ fromMonth Oct = 10
 fromMonth Nov = 11
 fromMonth Dec = 12
 
+private
 toMonth : Double -> Month
 toMonth 1 = Jan
 toMonth 2 = Feb
@@ -143,6 +150,7 @@ toMonth _ = Jan
 ||| Year 0 is a considered as a leap year.
 ||| Negative years follow the same rules as positive year.
 ||| For example, -4 is a leap year, but not -100.
+public export
 isLeap : (year : Integer) -> Bool
 isLeap year =
   let
@@ -152,6 +160,7 @@ isLeap year =
     (nthYear 4) && (not (nthYear 100) || (nthYear 400))
 
 ||| Number of days in the given month and year.
+public export
 daysInMonth : (year : Integer) -> Month -> Integer
 daysInMonth _ Jan = 31
 daysInMonth year Feb = if isLeap year then 29 else 28
@@ -195,20 +204,17 @@ mkDate'
     -> Date
 mkDate' year month day = MkDate year month day
 
-||| Project the year from a Date.
-public export
-year : Date -> Integer
-year (MkDate y _ _) = y
+private
+yearFromDate : Date -> Integer
+yearFromDate (MkDate year _ _) = year
 
-||| Project the month from a Date.
-public export
-month : Date -> Month
-month (MkDate _ m _) = m
+private
+monthFromDate : Date -> Month
+monthFromDate (MkDate _ month _) = month
 
-||| Project the day from a Date.
-public export
-day : Date -> Integer
-day (MkDate _ _ d) = d
+private
+dayFromDate : Date -> Integer
+dayFromDate (MkDate _ _ day) = day
 
 ||| Convert a Gregorian Date to an arbitrary day count.
 |||
@@ -249,11 +255,6 @@ dateToDayCount cst (MkDate year month day) =
     f Nov = 245
     f Dec = 275
 
-||| Convert a Gregorian date to a Julian Day (JD) count.
-public export
-dateToJD : Date -> JD
-dateToJD = MkJD . dateToDayCount 1721118.5
-
 ||| Convert a Gregorian date to a Rata Die number.
 |||
 ||| Note that from our tests, the function converts correctly dates up
@@ -262,12 +263,12 @@ dateToJD = MkJD . dateToDayCount 1721118.5
 ||| incorrect results.
 ||| For example, 27379070069886 Jan 28 is incorrectly converted to
 ||| 10^16 - 1 while the result should be 10^16.
-public export
+private
 dateToRD : Date -> RD
 dateToRD = MkRD . dateToDayCount (-306)
 
 ||| Convert a day count set from an arbitrary point in time to
-||| a Gregorian Date typle (year, month, day).
+||| a Gregorian Date.
 |||
 ||| The first argument is the number of day between the arbitray point
 ||| and the date 1-Mar-0.
@@ -275,6 +276,7 @@ dateToRD = MkRD . dateToDayCount (-306)
 |||
 ||| The algorithm used is the one of Peter Baum in his article Date Algorithms:
 ||| https://www.researchgate.net/publication/316558298_Date_Algorithms
+public export
 dayCountToDate : Double -> Double -> Date
 dayCountToDate cst jd =
   if month > 12
@@ -316,13 +318,11 @@ dayCountToDate cst jd =
     day = cast $ c - fix ((153 * month - 457) / 5) + r
 
 ||| Rata Die number to Gregorian Date.
+|||
+||| Needed here for internal implementations.
+private
 rdToDate : RD -> Date
 rdToDate (MkRD ord) = dayCountToDate (-306) (fromInteger ord)
-
-||| Julian Day to Gregorian Date.
-public export
-jdToDate : JD -> Date
-jdToDate (MkJD ord) = dayCountToDate 1721118.5 (fromInteger ord)
 
 -- Day of the week.
 
@@ -342,6 +342,7 @@ data Weekday
 |||
 ||| Values lower than 0 or greater than 6 will be converted
 ||| to their modulo 7, so the function is total.
+private
 toWeekday : Integer -> Weekday
 toWeekday 0 = Sun
 toWeekday 1 = Mon
@@ -355,14 +356,6 @@ toWeekday x = toWeekday $ assert_smaller x (mod x 7)
 ||| Day of the week for a given Rata Die number.
 rdToWeekday : RD -> Weekday
 rdToWeekday (MkRD ord) = toWeekday $ mod ord 7
-
-||| Day of the week for a given Julian Day.
-jdToWeekday : JD -> Weekday
-jdToWeekday (MkJD ord) = toWeekday $ mod (ord + 2) 7
-
-||| Day of the week for a given Gregorian Date.
-dateToWeekday : Date -> Weekday
-dateToWeekday = rdToWeekday . dateToRD
 
 -- Operations on Date.
 
@@ -386,7 +379,7 @@ public export
 Monoid Period where
   neutral = MkPeriod 0 0 0
 
-||| Add a Period of time to a Gregorian Date.
+private
 addPeriodToDate : Date -> Period -> Date
 addPeriodToDate (MkDate year month day) (MkPeriod years 0 0) =
   MkDate (year + years) month day
@@ -403,20 +396,112 @@ addPeriodToDate (MkDate year month day) period = rdToDate $
     month' : Month
     month' = toMonth . fromInteger $ mod m 12
 
-||| Add a Period of time to a Rata Die number.
-addPeriodToRd : RD -> Period -> RD
-addPeriodToRd (MkRD ord) (MkPeriod 0 0 days) = MkRD (ord + days)
-addPeriodToRd rd period = dateToRD $ addPeriodToDate (rdToDate rd) period
+||| A reference to a specific day.
+|||
+||| A specific day can be referenced through different means:
+|||
+||| - Calendar dates such as the Gregorian Calendar
+||| - Count of days, such as Julian Day or Rata Die numbers
+|||
+||| Default implementation are provided for all functions
+||| except fromDate and toDate.
+||| However, they might be slow as they will convert back and forth
+||| between Date and your type. Therefore, if speed is a concern, you
+||| should provide your own implementations.
+interface Day a where
 
-||| Add a Period of time to a Julian Day number.
-addPeriodToJd : JD -> Period -> JD
-addPeriodToJd (MkJD ord) (MkPeriod 0 0 days) = MkJD (ord + days)
-addPeriodToJd jd period = dateToJD $ addPeriodToDate (jdToDate jd) period
+  -- Convertions
 
--- Tests.
+  ||| Convert from a Gregorian Date.
+  fromDate : Date -> a
 
-rdToDate_1_is_correct : 1 = dateToRD (rdToDate 1)
+  ||| Convert to a Gregorian Date.
+  toDate : a -> Date
+
+  -- Projections
+
+  ||| Project the year.
+  year : a -> Integer
+
+  ||| Project the month.
+  month : a -> Month
+
+  ||| Project the day.
+  day : a -> Integer
+
+  ||| Project the day of the week.
+  weekday : a -> Weekday
+
+  -- Operations
+
+  ||| Add a period of time.
+  addPeriod : a -> Period -> a
+
+  -- Default implementation
+
+  year = yearFromDate . toDate
+
+  month = monthFromDate . toDate
+
+  day = dayFromDate . toDate
+
+  weekday = rdToWeekday . dateToRD . toDate
+
+  addPeriod day = fromDate . addPeriodToDate (toDate day)
+
+Day Date where
+
+  -- ||| Equivalent to the id function.
+  fromDate = id
+
+  -- ||| Equivalent to the id function.
+  toDate = id
+
+  year = yearFromDate
+
+  month = monthFromDate
+
+  day = dayFromDate
+
+  weekday = rdToWeekday . dateToRD
+
+  addPeriod = addPeriodToDate
+
+private
+jdCst : Double
+jdCst = 1721118.5
+
+Day JD where
+
+  fromDate = MkJD . dateToDayCount jdCst
+
+  toDate (MkJD ord) = dayCountToDate jdCst (fromInteger ord)
+
+  weekday (MkJD ord) = toWeekday $ mod (ord + 2) 7
+
+  addPeriod (MkJD ord) (MkPeriod 0 0 days) = MkJD (ord + days)
+  addPeriod jd period = fromDate $ addPeriod (toDate jd) period
+
+private
+rdCst : Double
+rdCst = (-306)
+
+Day RD where
+
+  fromDate = MkRD . dateToDayCount rdCst
+
+  toDate = rdToDate
+
+  weekday = rdToWeekday
+
+  addPeriod (MkRD ord) (MkPeriod 0 0 days) = MkRD (ord + days)
+  addPeriod rd period = fromDate $ addPeriod (toDate rd) period
+
+-- Tests
+
+rdToDate_1_is_correct : MkRD 1 = fromDate (toDate $ MkRD 1)
 rdToDate_1_is_correct = Refl
 
-rdToDate_10_15_is_correct : 1000000000000000 = dateToRD (rdToDate 1000000000000000)
+rdToDate_10_15_is_correct : MkRD 1000000000000000
+  = fromDate (toDate $ MkRD 1000000000000000)
 rdToDate_10_15_is_correct = Refl
