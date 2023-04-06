@@ -540,7 +540,7 @@ Day OrdinalDate where
 
   fromDate (MkDate year month day) =
     MkOrdinalDate year $
-      daysBeforeMonth month + (if isLeap year then 1 else 0) + day
+      daysBeforeMonth' (isLeap year) month + day
     where
       daysBeforeMonth : Month -> Integer
       daysBeforeMonth Jan = 0
@@ -555,6 +555,13 @@ Day OrdinalDate where
       daysBeforeMonth Oct = 273
       daysBeforeMonth Nov = 304
       daysBeforeMonth Dec = 334
+
+      -- Takes into account leap years
+      daysBeforeMonth' : Bool -> Month -> Integer
+      daysBeforeMonth' True  Jan = 0
+      daysBeforeMonth' True  Feb = 31
+      daysBeforeMonth' True  m   = daysBeforeMonth m + 1
+      daysBeforeMonth' False m   = daysBeforeMonth m
 
   toDate (MkOrdinalDate year ord) =
     toDate (MkRD $ cast rd)
