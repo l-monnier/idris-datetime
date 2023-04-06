@@ -497,6 +497,74 @@ Day RD where
   addPeriod (MkRD ord) (MkPeriod 0 0 days) = MkRD (ord + days)
   addPeriod rd period = fromDate $ addPeriod (toDate rd) period
 
+||| A year ordinal consists of a year and an ordinal number ranging from
+||| 1 to 366.
+export
+data OrdinalDate = MkOrdinalDate Integer Integer
+
+||| Return an OrdinalDate or a DateTimeException.
+|||
+||| An OrdinalDate is returned only if:
+|||
+||| - The number of days is above 0; and
+||| - The number of days is not above the number of days for the provided year
+|||   (365 or 366 if the year is a leap year.)
+public export
+mkOrdinalDate
+  :  (year : Integer)
+  -> (day : Integer)
+  -> Either DateTimeException OrdinalDate
+mkOrdinalDate year day with (1 > day, day > 365 + if isLeap year then 1 else 0)
+  mkOrdinalDate year day | (True , True ) = Right $ MkOrdinalDate year day
+  mkOrdinalDate year day | (False, _    ) = Left $ DayLowerThanOne day
+  mkOrdinalDate year day | (_    , False) = Left $ DayIsTooGreat day
+
+||| Create an OrdinalDate statically checking the provided arguments.
+|||
+||| The arguments are correct only if:
+|||
+|||
+||| - The number of days is above 0; and
+||| - The number of days is not above the number of days for the provided year
+|||   (365 or 366 if the year is a leap year.)
+public export
+mkOrdinalDate'
+  :  (year : Integer)
+  -> (day : Integer)
+  -> {auto 0 isGreaterThanZero : 0 < day}
+  -> {auto 0 isLowerThanMax : day < 366 + if isLeap year then 1 else 0}
+  -> OrdinalDate
+mkOrdinalDate' year day = MkOrdinalDate year day
+
+Day OrdinalDate where
+
+  fromDate (MkDate year month day) =
+    MkOrdinalDate year $
+      daysBeforeMonth month + (if isLeap year then 1 else 0) + day
+    where
+      daysBeforeMonth : Month -> Integer
+      daysBeforeMonth Jan = 0
+      daysBeforeMonth Feb = 31
+      daysBeforeMonth Mar = 59
+      daysBeforeMonth Apr = 90
+      daysBeforeMonth May = 120
+      daysBeforeMonth Jun = 151
+      daysBeforeMonth Jul = 181
+      daysBeforeMonth Aug = 212
+      daysBeforeMonth Sep = 243
+      daysBeforeMonth Oct = 273
+      daysBeforeMonth Nov = 304
+      daysBeforeMonth Dec = 334
+
+  toDate (MkOrdinalDate year ord) =
+    toDate (MkRD $ cast rd)
+    where
+    y : Double
+    y = fromInteger (year - 1)
+
+    rd : Double
+    rd = fromInteger ord + 365 * y + floor (y / 4) - floor (y / 100) + floor (y / 400)
+
 -- Tests
 
 rdToDate_1_is_correct : MkRD 1 = fromDate (toDate $ MkRD 1)
@@ -505,3 +573,15 @@ rdToDate_1_is_correct = Refl
 rdToDate_10_15_is_correct : MkRD 1000000000000000
   = fromDate (toDate $ MkRD 1000000000000000)
 rdToDate_10_15_is_correct = Refl
+
+ordinalDate_100_toDate_isCorrect :
+  toDate (MkOrdinalDate 2001 100) = MkDate 2001 Apr 10
+ordinalDate_100_toDate_isCorrect = Refl
+
+ordinalDate_200_toDate_isCorrect :
+  toDate (MkOrdinalDate 2001 200) = MkDate 2001 Jul 19
+ordinalDate_200_toDate_isCorrect = Refl
+
+ordinalDate_300_leap_toDate_isCorrect :
+  toDate (MkOrdinalDate 2004 300) = MkDate 2004 Oct 26
+ordinalDate_300_leap_toDate_isCorrect = Refl
