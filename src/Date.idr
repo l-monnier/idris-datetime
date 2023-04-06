@@ -581,6 +581,10 @@ rdToDate_10_15_is_correct : MkRD 1000000000000000
   = fromDate (toDate $ MkRD 1000000000000000)
 rdToDate_10_15_is_correct = Refl
 
+ordinalDate_100_fromDate_isCorrect :
+  (MkOrdinalDate 2001 100) = fromDate (MkDate 2001 Apr 10)
+ordinalDate_100_fromDate_isCorrect = Refl
+
 ordinalDate_100_toDate_isCorrect :
   toDate (MkOrdinalDate 2001 100) = MkDate 2001 Apr 10
 ordinalDate_100_toDate_isCorrect = Refl
@@ -589,6 +593,14 @@ ordinalDate_200_toDate_isCorrect :
   toDate (MkOrdinalDate 2001 200) = MkDate 2001 Jul 19
 ordinalDate_200_toDate_isCorrect = Refl
 
+ordinalDate_200_fromDate_isCorrect :
+  MkOrdinalDate 2001 200 = fromDate (MkDate 2001 Jul 19)
+ordinalDate_200_fromDate_isCorrect = Refl
+
 ordinalDate_300_leap_toDate_isCorrect :
   toDate (MkOrdinalDate 2004 300) = MkDate 2004 Oct 26
 ordinalDate_300_leap_toDate_isCorrect = Refl
+
+ordinalDate_300_leap_fromDate_isCorrect :
+  MkOrdinalDate 2004 300 = fromDate (MkDate 2004 Oct 26)
+ordinalDate_300_leap_fromDate_isCorrect = Refl
