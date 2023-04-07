@@ -381,20 +381,24 @@ Monoid Period where
 
 private
 addPeriodToDate : Date -> Period -> Date
-addPeriodToDate (MkDate year month day) (MkPeriod years 0 0) =
-  MkDate (year + years) month day
-  -- TODO optimize when only a month is provided and not a day.
-addPeriodToDate (MkDate year month day) period = rdToDate $
-  (dateToRD $ MkDate (year + period.years) month' day) + fromInteger period.days
+addPeriodToDate date (MkPeriod 0 0 days) =
+  rdToDate $ dateToRD date + MkRD days
+addPeriodToDate (MkDate year month day) period =
+  rdToDate $ dateToRD (MkDate year' month' day') + MkRD period.days
   where
     m : Integer
     m = (fromMonth month) + period.months
 
     year' : Integer
-    year' = year + (div m 12)
+    year' = year + period.years + div m 12
 
     month' : Month
     month' = toMonth . fromInteger $ mod m 12
+
+    -- Clip the day to the end of the month if above the maximal
+    -- number of days.
+    day' : Integer
+    day' = min day (daysInMonth year' month')
 
 ||| A reference to a specific day.
 |||
