@@ -162,18 +162,12 @@ isLeap year =
 ||| Number of days in the given month and year.
 public export
 daysInMonth : (year : Integer) -> Month -> Integer
-daysInMonth _ Jan = 31
 daysInMonth year Feb = if isLeap year then 29 else 28
-daysInMonth _ Mar = 31
 daysInMonth _ Apr = 30
-daysInMonth _ May = 31
 daysInMonth _ Jun = 30
-daysInMonth _ Jul = 31
-daysInMonth _ Aug = 31
 daysInMonth _ Sep = 30
-daysInMonth _ Oct = 31
 daysInMonth _ Nov = 30
-daysInMonth _ Dec = 31
+daysInMonth _ _   = 31
 
 ||| A Gregorian calendar date
 export
