@@ -37,6 +37,13 @@ private
 fix : Double -> Double
 fix x = if x < 0 then ceiling x else floor x
 
+||| A time unit.
+public export
+data TimeUnit
+  = Years
+  | Months
+  | Days
+
 ||| Abbreviated symbolic month
 public export
 data Month
@@ -74,6 +81,11 @@ Num RD where
   (MkRD x) + (MkRD y) = MkRD (x + y)
   (MkRD x) * (MkRD y) = MkRD (x * y)
   fromInteger = MkRD
+
+public export
+Neg RD where
+  negate (MkRD x) = MkRD (negate x)
+  (MkRD x) - (MkRD y) = MkRD (x - y)
 
 ||| Exceptions
 public export
@@ -435,6 +447,9 @@ interface Day a where
   ||| Add a period of time.
   addPeriod : a -> Period -> a
 
+  ||| Difference between two dates in days.
+  diff : a -> a -> Integer
+
   -- Default implementation
 
   year = yearFromDate . toDate
@@ -446,6 +461,14 @@ interface Day a where
   weekday = rdToWeekday . dateToRD . toDate
 
   addPeriod day = fromDate . addPeriodToDate (toDate day)
+
+  diff date1 date2 = getOrd rd
+    where
+      rd : RD
+      rd = (dateToRD $ toDate date2) - (dateToRD $ toDate date1)
+
+      getOrd : RD -> Integer
+      getOrd (MkRD ord) = ord
 
 Day Date where
 
@@ -480,6 +503,8 @@ Day JD where
   addPeriod (MkJD ord) (MkPeriod 0 0 days) = MkJD (ord + days)
   addPeriod jd period = fromDate $ addPeriod (toDate jd) period
 
+  diff (MkJD ord1) (MkJD ord2) = ord2 - ord1
+
 private
 rdCst : Double
 rdCst = (-306)
@@ -494,6 +519,8 @@ Day RD where
 
   addPeriod (MkRD ord) (MkPeriod 0 0 days) = MkRD (ord + days)
   addPeriod rd period = fromDate $ addPeriod (toDate rd) period
+
+  diff (MkRD ord1) (MkRD ord2) = ord2 - ord1
 
 ||| A year ordinal consists of a year and an ordinal number ranging from
 ||| 1 to 366.
@@ -571,7 +598,6 @@ Day OrdinalDate where
     rd = fromInteger ord + 365 * y + floor (y / 4) - floor (y / 100) + floor (y / 400)
 
 -- Tests
-
 rdToDate_1_is_correct : MkRD 1 = fromDate (toDate $ MkRD 1)
 rdToDate_1_is_correct = Refl
 
